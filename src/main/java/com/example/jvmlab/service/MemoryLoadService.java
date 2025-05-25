@@ -1,31 +1,35 @@
 package com.example.jvmlab.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class MemoryLoadService {
-
-    private List<byte[]> memoryLeakSimulator = new ArrayList<>();
+    private static final Logger logger = LoggerFactory.getLogger(MemoryLoadService.class);
 
     public long performMemoryIntensiveTask(int dataSize) {
-        // Crear un array de bytes del tamaño especificado
-        byte[] data = new byte[dataSize];
-
-        // Simular una fuga de memoria controlada
-        memoryLeakSimulator.add(data);
-
-        // Calcular memoria usada
-        Runtime runtime = Runtime.getRuntime();
-        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
-
-        // Si la lista crece demasiado, limpiarla
-        if (memoryLeakSimulator.size() > 10) {
-            memoryLeakSimulator.clear();
-            System.gc(); // Sugerir GC (solo para propósitos de demostración)
+        List<byte[]> buffers = new ArrayList<>();
+        int chunkSize = 1024 * 1024; // 1MB por chunk
+        int allocated = 0;
+        while (allocated < dataSize) {
+            int size = Math.min(chunkSize, dataSize - allocated);
+            buffers.add(new byte[size]);
+            allocated += size;
         }
+        try {
+            // simulamos retención breve
+            Thread.sleep(30);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return allocated;
+    }
 
-        return usedMemory;
+    public void logExecution(int dataSize, long durationMs) {
+        logger.info("Memory Task executed with dataSize={} in {} ms", dataSize, durationMs);
     }
 }
