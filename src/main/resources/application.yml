@@ -19,6 +19,14 @@ management:
       enabled: true
 
   metrics:
+    binders:
+      jvm:
+        enabled: true
+
+    export:
+      prometheus:
+        step: 15s
+
       distribution:
         histogram:
           http.server.requests: true
