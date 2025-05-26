@@ -5,6 +5,7 @@ COPY target/*.jar app.jar
 
 ### Alpine Image
 FROM eclipse-temurin:21-jdk-alpine AS alpine
+USER root
 WORKDIR /app
 COPY --from=builder /app/app.jar app.jar
 EXPOSE 8080
@@ -17,4 +18,3 @@ COPY --from=builder /app/app.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
-# 9010 9011
