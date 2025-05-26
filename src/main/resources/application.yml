@@ -27,8 +27,8 @@ management:
       prometheus:
         step: 15s
 
-      distribution:
-        histogram:
-          http.server.requests: true
-        percentiles:
-          http.server.requests: 0.95,0.99
+    distribution:
+      histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
