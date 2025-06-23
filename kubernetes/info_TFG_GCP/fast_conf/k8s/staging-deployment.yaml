@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jvm-lab-app
+  namespace: jvm-lab-staging
+  labels:
+    app: jvm-lab
+    env: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: jvm-lab
+      env: staging
+  template:
+    metadata:
+      labels:
+        app: jvm-lab
+        env: staging
+    spec:
+      containers:
+      - name: jvm-lab
+        image: PLACEHOLDER_IMAGE
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "384Mi"
+            cpu: "600m"
+          limits:
+            memory: "768Mi"
+            cpu: "1200m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        env:
+        - name: JAVA_OPTS
+          value: "-Xms256m -Xmx512m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jvm-lab-service
+  namespace: jvm-lab-staging
+spec:
+  selector:
+    app: jvm-lab
+    env: staging
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

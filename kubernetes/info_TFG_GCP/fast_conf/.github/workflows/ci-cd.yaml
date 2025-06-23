@@ -1,0 +1,90 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  ARTIFACT_REGISTRY: ${{ secrets.ARTIFACT_REGISTRY }}
+  REGION: europe-southwest1
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Build with Maven
+      run: mvn clean compile
+
+    - name: Run tests
+      run: mvn test
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for Artifact Registry
+      run: gcloud auth configure-docker europe-southwest1-docker.pkg.dev
+
+    - name: Build Docker image
+      run: |
+        docker build -t $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA .
+        docker build -t $ARTIFACT_REGISTRY/jvm-lab:latest .
+
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+
+    - name: Run Trivy vulnerability scanner
+      run: |
+        trivy image --exit-code 0 --severity HIGH,CRITICAL $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA
+        trivy image --exit-code 1 --severity CRITICAL $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA
+
+    - name: Push Docker image
+      run: |
+        docker push $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA
+        docker push $ARTIFACT_REGISTRY/jvm-lab:latest
+
+    - name: Create Cloud Deploy release
+      run: |
+        # Reemplazar placeholder en manifiestos
+        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA|g" k8s/staging-deployment.yaml
+        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA|g" k8s/production-deployment.yaml
+        
+        gcloud deploy releases create release-$GITHUB_SHA \
+          --delivery-pipeline=jvm-lab-pipeline \
+          --region=$REGION \
+          --source=k8s/

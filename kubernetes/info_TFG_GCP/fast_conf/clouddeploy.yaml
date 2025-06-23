@@ -1,0 +1,26 @@
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: jvm-lab-pipeline
+description: CI/CD pipeline for jvm-lab application
+serialPipeline:
+  stages:
+  - targetId: staging
+  - targetId: production
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: staging
+description: Staging environment
+gke:
+  cluster: projects/absolute-maxim-463814-q1/locations/europe-southwest1-a/clusters/jvm-lab-cluster
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: production
+description: Production environment
+requireApproval: true
+gke:
+  cluster: projects/absolute-maxim-463814-q1/locations/europe-southwest1-a/clusters/jvm-lab-cluster
