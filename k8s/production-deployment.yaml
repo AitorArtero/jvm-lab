@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: jvm-lab
-        image: PLACEHOLDER_IMAGE
+        image: ithor/jvm-lab:1.0.8-alpine
         ports:
         - containerPort: 8080
         resources:
