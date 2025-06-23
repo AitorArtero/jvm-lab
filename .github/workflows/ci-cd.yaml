@@ -85,11 +85,9 @@ jobs:
 
     - name: Create Cloud Deploy release
       run: |
-        # Reemplazar placeholder en manifiestos
-        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}|g" k8s/staging-deployment.yaml
-        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}|g" k8s/production-deployment.yaml
+        sed -i "s|ithor/jvm-lab:1.0.8-alpine|$ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}|g" k8s/staging-deployment.yaml
+        sed -i "s|ithor/jvm-lab:1.0.8-alpine|$ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}|g" k8s/production-deployment.yaml
         
-        # Crear release con nombre más corto
         gcloud deploy releases create rel-${{ steps.vars.outputs.SHORT_SHA }} \
           --delivery-pipeline=jvm-lab-pipeline \
           --region=$REGION \
