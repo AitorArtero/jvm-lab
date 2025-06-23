@@ -54,9 +54,13 @@ jobs:
     - name: Configure Docker for Artifact Registry
       run: gcloud auth configure-docker europe-southwest1-docker.pkg.dev
 
+    - name: Generate short SHA
+      id: vars
+      run: echo "SHORT_SHA=$(echo $GITHUB_SHA | head -c8)" >> $GITHUB_OUTPUT
+
     - name: Build Docker image
       run: |
-        docker build -t $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA .
+        docker build -t $ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }} .
         docker build -t $ARTIFACT_REGISTRY/jvm-lab:latest .
 
     - name: Install Trivy
@@ -71,21 +75,22 @@ jobs:
     - name: Run Trivy vulnerability scanner
       run: |
         echo "Running Trivy scan - vulnerabilities will be logged but won't fail the build"
-        trivy image --exit-code 0 --severity HIGH,CRITICAL $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA || true
+        trivy image --exit-code 0 --severity HIGH,CRITICAL $ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }} || true
         echo "Trivy scan completed - continuing with pipeline"
 
     - name: Push Docker image
       run: |
-        docker push $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA
+        docker push $ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}
         docker push $ARTIFACT_REGISTRY/jvm-lab:latest
 
     - name: Create Cloud Deploy release
       run: |
         # Reemplazar placeholder en manifiestos
-        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA|g" k8s/staging-deployment.yaml
-        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA|g" k8s/production-deployment.yaml
+        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}|g" k8s/staging-deployment.yaml
+        sed -i "s|PLACEHOLDER_IMAGE|$ARTIFACT_REGISTRY/jvm-lab:${{ steps.vars.outputs.SHORT_SHA }}|g" k8s/production-deployment.yaml
         
-        gcloud deploy releases create release-$GITHUB_SHA \
+        # Crear release con nombre más corto
+        gcloud deploy releases create rel-${{ steps.vars.outputs.SHORT_SHA }} \
           --delivery-pipeline=jvm-lab-pipeline \
           --region=$REGION \
           --source=k8s/
