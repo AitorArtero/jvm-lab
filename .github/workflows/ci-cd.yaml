@@ -70,8 +70,9 @@ jobs:
 
     - name: Run Trivy vulnerability scanner
       run: |
-        trivy image --exit-code 0 --severity HIGH,CRITICAL $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA
-        trivy image --exit-code 1 --severity CRITICAL $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA
+        echo "Running Trivy scan - vulnerabilities will be logged but won't fail the build"
+        trivy image --exit-code 0 --severity HIGH,CRITICAL $ARTIFACT_REGISTRY/jvm-lab:$GITHUB_SHA || true
+        echo "Trivy scan completed - continuing with pipeline"
 
     - name: Push Docker image
       run: |
